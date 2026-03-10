@@ -45,6 +45,14 @@ Install the project and local development dependencies:
 python -m pip install -e '.[dev,collision]'
 ```
 
+Or create the development environment with `uv` and use the NumPy 2 compatible
+`roboticstoolbox-python` fork:
+
+```bash
+uv sync --group dev-env --extra collision
+uv add --group dev-env "roboticstoolbox-python @ git+https://github.com/gaurishg/robotics-toolbox-python.git"
+```
+
 Run the configured checks locally:
 
 ```bash
