@@ -36,3 +36,20 @@ Compared with the base `jhavl/spatialgeometry` repository, this repository now:
 - adds `ruff` and `mypy` configuration for static checking
 - updates CI to run the new static checks alongside the test suite
 - skips optional `roboticstoolbox` integration tests when that upstream dependency is unavailable or incompatible with the active NumPy build
+
+## Development
+
+Install the project and local development dependencies:
+
+```bash
+python -m pip install -e '.[dev,collision]'
+```
+
+Run the configured checks locally:
+
+```bash
+python -m flake8 spatialgeometry tests
+python -m ruff check spatialgeometry tests
+python -m mypy spatialgeometry
+python -m pytest -q
+```
