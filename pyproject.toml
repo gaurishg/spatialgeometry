@@ -63,7 +63,7 @@ dev = [
     "black",
     "mypy",
     "pytest-timeout",
-    "roboticstoolbox-python>=1.1.1",
+    "roboticstoolbox-python @ git+https://github.com/gaurishg/robotics-toolbox-python.git",
     "ruff",
     "swift-sim",
     "pytest",
@@ -73,6 +73,21 @@ dev = [
 ]
 
 docs = ["sphinx", "sphinx_rtd_theme", "sphinx-autorun"]
+
+[dependency-groups]
+
+dev-env = [
+    "black",
+    "mypy",
+    "pytest-timeout",
+    "roboticstoolbox-python @ git+https://github.com/gaurishg/robotics-toolbox-python.git",
+    "ruff",
+    "swift-sim",
+    "pytest",
+    "pytest-cov",
+    "flake8",
+    "pyyaml",
+]
 
 
 [build-system]
@@ -87,6 +102,33 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 
 packages = ["spatialgeometry", "spatialgeometry.geom", "spatialgeometry.tools"]
+
+
+[tool.uv.sources]
+
+spatialgeometry = { workspace = true }
+
+[tool.uv.workspace]
+
+members = ["."]
+
+[[tool.uv.dependency-metadata]]
+
+name = "roboticstoolbox-python"
+version = "1.1.1"
+requires-dist = [
+    "numpy>=2.0.0",
+    "spatialmath-python>=1.1.5",
+    "spatialgeometry>=1.1.0",
+    "pgraph-python",
+    "scipy",
+    "matplotlib",
+    "ansitable",
+    "swift-sim>=1.0.0",
+    "rtb-data",
+    "progress",
+    "typing_extensions",
+]
 
 
 [tool.black]
@@ -147,6 +189,8 @@ warn_unused_ignores = true
 [[tool.mypy.overrides]]
 
 module = [
+    "roboticstoolbox",
+    "roboticstoolbox.*",
     "pybullet",
     "spatialmath",
     "spatialmath.*",

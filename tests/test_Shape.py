@@ -3,7 +3,13 @@
 @author: Jesse Haviland
 """
 
+import subprocess
+import sys
 import unittest
+from contextlib import redirect_stderr
+from io import StringIO
+from pathlib import Path
+from types import ModuleType
 
 import numpy as np
 import numpy.testing as nt
@@ -12,13 +18,42 @@ from spatialmath.pose3d import SE3
 
 import spatialgeometry as gm
 
+rtb: ModuleType | None = None
 try:
-    import roboticstoolbox as rtb
+    with redirect_stderr(StringIO()):
+        import roboticstoolbox as rtb
 except ImportError:  # pragma nocover
     rtb = None
 
 
 class TestShape(unittest.TestCase):
+    def test_roboticstoolbox_import(self) -> None:
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "from spatialmath.base import *; "
+                    "import numpy as np; "
+                    "import roboticstoolbox as rtb"
+                ),
+            ],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+            msg=(
+                "roboticstoolbox import failed:\n"
+                f"STDOUT:\n{result.stdout}\n"
+                f"STDERR:\n{result.stderr}"
+            ),
+        )
+
     def test_init(self):
         gm.Cuboid([1, 1, 1], base=sm.SE3(0, 0, 0))
         gm.Cylinder(1, 1, base=sm.SE3(2, 0, 0))
