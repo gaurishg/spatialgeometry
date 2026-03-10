@@ -249,7 +249,10 @@ class Shape(SceneNode):
         elif value is None:
             value = default_color
         else:
-            value = np.asarray(value, dtype=np.float64)
+            try:
+                value = np.asarray(value, dtype=np.float64)
+            except (TypeError, ValueError) as exc:
+                raise TypeError("Color values must be numeric") from exc
 
             if np.any(value > 1.0):
                 value = value / 255.0
