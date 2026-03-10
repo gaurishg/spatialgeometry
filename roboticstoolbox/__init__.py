@@ -9,6 +9,12 @@ from types import ModuleType
 import numpy as np
 
 
+def _numpy_disp(value: object) -> None:
+    """Provide the NumPy 1.x ``np.disp`` helper expected by roboticstoolbox."""
+
+    print(value)
+
+
 def _install_swift_stub(message: str) -> None:
     module = ModuleType("swift")
 
@@ -23,7 +29,7 @@ def _install_swift_stub(message: str) -> None:
 
 def _patch_numpy_compatibility() -> None:
     if not hasattr(np, "disp"):
-        np.disp = print  # type: ignore[attr-defined]
+        np.disp = _numpy_disp  # type: ignore[attr-defined]
 
 
 def _load_real_roboticstoolbox() -> ModuleType:

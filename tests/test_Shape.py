@@ -18,7 +18,7 @@ from spatialmath.pose3d import SE3
 
 import spatialgeometry as gm
 
-rtb: ModuleType | None
+rtb: ModuleType | None = None
 try:
     with redirect_stderr(StringIO()):
         import roboticstoolbox as rtb
