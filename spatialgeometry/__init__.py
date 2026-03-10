@@ -1,18 +1,17 @@
-from spatialgeometry.geom import (
-    SceneNode,
-    SceneGroup,
-    Shape,
-    Axes,
-    Arrow,
-    CollisionShape,
-    Mesh,
-    Cylinder,
-    Cuboid,
-    Box,
-    Sphere)
-
 from spatialgeometry import tools
-
+from spatialgeometry.geom import (
+    Arrow,
+    Axes,
+    Box,
+    CollisionShape,
+    Cuboid,
+    Cylinder,
+    Mesh,
+    SceneGroup,
+    SceneNode,
+    Shape,
+    Sphere,
+)
 
 __all__ = [
     # aliased

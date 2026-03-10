@@ -1,25 +1,16 @@
-# Code Author Github user minrk
-# Originally from https://github.com/minrk/wurlitzer/blob/master/wurlitzer.py
-
-
-from __future__ import print_function
-
-from contextlib import contextmanager
 import ctypes
 import errno
-from fcntl import fcntl, F_GETFL, F_SETFL
-import io
 import os
-
-try:
-    from queue import Queue
-except ImportError:  # pragma nocover
-    from Queue import Queue
-
 import selectors
 import sys
 import threading
 import time
+from contextlib import contextmanager
+from fcntl import F_GETFL, F_SETFL, fcntl
+from queue import Queue
+
+# Code Author Github user minrk
+# Originally from https://github.com/minrk/wurlitzer/blob/master/wurlitzer.py
 
 libc = ctypes.CDLL(None)
 
@@ -57,7 +48,7 @@ def dup2(a, b, timeout=3):
         raise dup_err
 
 
-class Wurlitzer(object):  # pragma: no cover
+class Wurlitzer:  # pragma: no cover
     """Class for Capturing Process-level FD output via dup2
 
     Typically used via `wurlitzer.capture`
@@ -86,7 +77,7 @@ class Wurlitzer(object):  # pragma: no cover
         self._handlers["stdout"] = self._handle_stdout
 
     def _setup_pipe(self, name):
-        real_fd = getattr(sys, "__%s__" % name).fileno()
+        real_fd = getattr(sys, f"__{name}__").fileno()
         save_fd = os.dup(real_fd)
         self._save_fds[name] = save_fd
 
@@ -213,7 +204,7 @@ class Wurlitzer(object):  # pragma: no cover
                         poller.unregister(fd)
                         os.close(fd)
                     else:
-                        handler = getattr(self, "_handle_%s" % name)
+                        handler = getattr(self, f"_handle_{name}")
                         handler(data)
                 if not pipes:
                     # pipes closed, we are done
@@ -266,7 +257,7 @@ def pipes(
         stdout_r, stdout_w = os.pipe()
         stdout_w = os.fdopen(stdout_w, "wb")
         if encoding:
-            stdout_r = io.open(stdout_r, "r", encoding=encoding)
+            stdout_r = open(stdout_r, encoding=encoding)
         else:
             stdout_r = os.fdopen(stdout_r, "rb")
         stdout_pipe = True
@@ -280,7 +271,7 @@ def pipes(
         stderr_r, stderr_w = os.pipe()
         stderr_w = os.fdopen(stderr_w, "wb")
         if encoding:
-            stderr_r = io.open(stderr_r, "r", encoding=encoding)
+            stderr_r = open(stderr_r, encoding=encoding)
         else:
             stderr_r = os.fdopen(stderr_r, "rb")
         stderr_pipe = True

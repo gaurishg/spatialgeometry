@@ -3,24 +3,33 @@
 @author: Jesse Haviland
 """
 
-from numpy import ndarray, eye, copy as npcopy, array
-from spatialmath.base import r2q
-from abc import ABC
-from spatialgeometry.scene import node_init, node_update, scene_graph_children, scene_graph_tree
-from spatialmath import SE3
 from copy import deepcopy
+from typing import Any
 
-# from roboticstoolbox.robot.ETS import ETS
-from typing import Type, Union, List
+import numpy as np
+from numpy import array, eye
+from numpy import copy as npcopy
+from numpy.typing import NDArray
+from spatialmath import SE3
+from spatialmath.base import r2q
+
+from spatialgeometry.scene import (
+    node_init,
+    node_update,
+    scene_graph_children,
+    scene_graph_tree,
+)
+
+FloatArray = NDArray[np.float64]
 
 
 class SceneNode:
     def __init__(
         self,
-        T: ndarray = eye(4),
-        scene_parent: Union["SceneNode", None] = None,
-        scene_children: Union[List["SceneNode"], None] = None,
-    ):
+        T: FloatArray = eye(4),
+        scene_parent: "SceneNode | None" = None,
+        scene_children: list["SceneNode"] | None = None,
+    ) -> None:
         # These three are static attributes which can never be changed
         # If these are directly accessed and re-written, segmentation faults
         # will follow very soon after
@@ -28,24 +37,24 @@ class SceneNode:
         # modified through its setter
 
         # The world transform
-        self.__wT = eye(4).copy(order="F")
+        self.__wT: FloatArray = eye(4).copy(order="F")
 
         # The quaternion extracted from wT
-        self.__wq = array([0.0, 0.0, 0.0, 1.0])
+        self.__wq: FloatArray = array([0.0, 0.0, 0.0, 1.0])
 
         # The local transform
-        self.__T = eye(4).copy(order="F")
+        self.__T: FloatArray = eye(4).copy(order="F")
         self.__T[:] = T.copy(order="F")
 
         if scene_children is None:
-            self._scene_children = []
+            self._scene_children: list[SceneNode] = []
         else:
             self._scene_children = scene_children
 
-        self._scene_parent = scene_parent
+        self._scene_parent: SceneNode | None = scene_parent
 
         # Set up the c object
-        self.__scene = self.__init_c()
+        self.__scene: Any = self.__init_c()
 
         # Update childs parent
         for child in self.scene_children:
@@ -62,10 +71,10 @@ class SceneNode:
 
     def _custom_scene_node_init(
         self,
-        T: ndarray = eye(4),
-        scene_parent: Union["SceneNode", None] = None,
-        scene_children: Union[List["SceneNode"], None] = None,
-    ):
+        T: FloatArray = eye(4),
+        scene_parent: "SceneNode | None" = None,
+        scene_children: list["SceneNode"] | None = None,
+    ) -> None:
         # The world transform
         self.__wT = eye(4).copy(order="F")
 
@@ -99,7 +108,7 @@ class SceneNode:
 
     # --------------------------------------------------------------------- #
 
-    def __init_c(self):
+    def __init_c(self) -> Any:
         """
         Super Private method which initialises a C object to hold Data
 
@@ -114,7 +123,7 @@ class SceneNode:
             [child._scene for child in self._scene_children],
         )
 
-    def __update_c(self):
+    def __update_c(self) -> None:
         """
         Super Private method which updates the C object which holds Data
 
@@ -128,15 +137,15 @@ class SceneNode:
         )
 
     @property
-    def _scene(self):
+    def _scene(self) -> Any:
         return self.__scene
 
     # --------------------------------------------------------------------- #
 
-    def __copy__(self):
+    def __copy__(self) -> "SceneNode":
         return deepcopy(self)
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, Any]) -> "SceneNode":
         result = SceneNode(
             T=self._T,
         )
@@ -153,15 +162,20 @@ class SceneNode:
         else:
             parent = "None"
 
-        return f"parent: {parent} \n self: {SE3(self._T).t} \n children: {[SE3(child._T).t for child in self._scene_children]}"
+        children = [SE3(child._T).t for child in self._scene_children]
+        return f"parent: {parent} \n self: {SE3(self._T).t} \n children: {children}"
 
         # parent = self.scene_parent
-        # return f"parent: {hex(id(parent)) if parent is not None else None} \n self: {hex(id(self))} \n children: {[hex(id(child)) for child in self.scene_children]}"
+        # return (
+        #     f"parent: {hex(id(parent)) if parent is not None else None} "
+        #     f"\n self: {hex(id(self))} "
+        #     f"\n children: {[hex(id(child)) for child in self.scene_children]}"
+        # )
 
     # --------------------------------------------------------------------- #
 
     @property
-    def scene_parent(self) -> Type["SceneNode"]:
+    def scene_parent(self) -> "SceneNode | None":
         """
         Returns the parent node of this object
 
@@ -169,7 +183,7 @@ class SceneNode:
         return self._scene_parent
 
     @scene_parent.setter
-    def scene_parent(self, parent: "SceneNode"):
+    def scene_parent(self, parent: "SceneNode") -> None:
         """
         Sets a new parent node of this object, will automatically update
         the parents child
@@ -184,7 +198,7 @@ class SceneNode:
         # Update c
         self.__update_c()
 
-    def _update_scene_parent(self, parent: "SceneNode"):
+    def _update_scene_parent(self, parent: "SceneNode") -> None:
         """
         Sets a new parent node of this object, does NOT update
         the parents child
@@ -198,7 +212,7 @@ class SceneNode:
     # --------------------------------------------------------------------- #
 
     @property
-    def scene_children(self) -> List["SceneNode"]:
+    def scene_children(self) -> list["SceneNode"]:
         """
         Returns the child nodes of this object
 
@@ -206,7 +220,7 @@ class SceneNode:
         return self._scene_children
 
     @scene_children.setter
-    def scene_children(self, children: List["SceneNode"]):
+    def scene_children(self, children: list["SceneNode"]) -> None:
         """
         Sets the child nodes of this object, does not update childs
         parent
@@ -222,7 +236,7 @@ class SceneNode:
         # Update c
         self.__update_c()
 
-    def _update_scene_children(self, child: "SceneNode"):
+    def _update_scene_children(self, child: "SceneNode") -> None:
         """
         Appends a new child to this object, does NOT update
         the childs parent
@@ -236,7 +250,7 @@ class SceneNode:
     # --------------------------------------------------------------------- #
 
     @property
-    def _wT(self) -> ndarray:
+    def _wT(self) -> FloatArray:
         """
         Returns the transform of this object in the world frame
 
@@ -244,7 +258,7 @@ class SceneNode:
         return self.__wT
 
     @property
-    def _wq(self) -> ndarray:
+    def _wq(self) -> FloatArray:
         """
         Returns the quaternion of this object in the world frame.
 
@@ -254,7 +268,7 @@ class SceneNode:
     # --------------------------------------------------------------------- #
 
     @property
-    def _T_reference(self) -> ndarray:
+    def _T_reference(self) -> FloatArray:
         """
         Returns the transform of this object with respect to the parent
         frame.
@@ -263,7 +277,7 @@ class SceneNode:
         return self.__T
 
     @property
-    def _T(self) -> ndarray:
+    def _T(self) -> FloatArray:
         """
         Returns a copy of the transform of this object with respect to the parent
         frame.
@@ -272,11 +286,11 @@ class SceneNode:
         return npcopy(self.__T)
 
     @_T.setter
-    def _T(self, T: ndarray):
+    def _T(self, T: FloatArray) -> None:
         self.__T[:] = T.copy(order="F")
 
         if self._scene_parent is not None:
-            self.__wT[:] = self.parent.wT @ self._T
+            self.__wT[:] = self._scene_parent._wT @ self._T
         else:
             self.__wT[:] = self._T
 
@@ -290,14 +304,14 @@ class SceneNode:
     # parent but unlimited children.
     # --------------------------------------------------------------------- #
 
-    def _propogate_scene_children(self):
+    def _propogate_scene_children(self) -> None:
         """
         Propogates the world transform starting from this node going downwards
         through the tree (will not go through parents)
         """
         scene_graph_children(self.__scene)
 
-    def _propogate_scene_tree(self):
+    def _propogate_scene_tree(self) -> None:
         """
         Propogates the world transform starting from this root of the tree in
         which this node lives
@@ -306,10 +320,10 @@ class SceneNode:
 
     # --------------------------------------------------------------------- #
 
-    def attach(self, object: "SceneNode"):
+    def attach(self, object: "SceneNode") -> None:
         new_childs = self.scene_children
         new_childs.append(object)
         self.scene_children = new_childs
 
-    def attach_to(self, object: "SceneNode"):
+    def attach_to(self, object: "SceneNode") -> None:
         self.scene_parent = object

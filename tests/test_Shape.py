@@ -3,14 +3,19 @@
 @author: Jesse Haviland
 """
 
-import numpy.testing as nt
-import numpy as np
-import roboticstoolbox as rtb
 import unittest
+
+import numpy as np
+import numpy.testing as nt
 import spatialmath as sm
 from spatialmath.pose3d import SE3
+
 import spatialgeometry as gm
-import roboticstoolbox as rtb
+
+try:
+    import roboticstoolbox as rtb
+except ImportError:  # pragma nocover
+    rtb = None
 
 
 class TestShape(unittest.TestCase):
@@ -117,7 +122,11 @@ class TestShape(unittest.TestCase):
 
         self.assertEqual(s1.fk_dict(), ans)
 
-    def test_mesh(self):
+    @unittest.skipUnless(
+        rtb is not None,
+        "roboticstoolbox is unavailable or incompatible with this NumPy build",
+    )
+    def test_mesh_roboticstoolbox(self):
         ur = rtb.models.UR5()
         print(ur.links[1].collision[0].filename)
         ur.links[1].collision[0].closest_point(ur.links[2].collision[0])
@@ -141,7 +150,7 @@ class TestShape(unittest.TestCase):
         s0 = gm.Cuboid([1, 1, 1], base=sm.SE3(0, 0, 0))
         s0.wT = np.eye(4)
 
-    def test_color(self):
+    def test_named_color(self):
         s0 = gm.Sphere(1, color="red")
         self.assertEqual(s0.color, (1.0, 0.0, 0.0, 1.0))
 
@@ -163,7 +172,7 @@ class TestShape(unittest.TestCase):
         s0.wT = np.eye(4)
         nt.assert_almost_equal(np.eye(4), s0.wT)
 
-    def test_mesh(self):
+    def test_mesh_without_collision(self):
         s0 = gm.Mesh("test.stl", collision=False)
         with self.assertRaises(ValueError):
             s0._init_pob()
@@ -184,11 +193,19 @@ class TestShape(unittest.TestCase):
 
         self.assertEqual(s0.to_dict(), ans)
 
+    @unittest.skipUnless(
+        rtb is not None,
+        "roboticstoolbox is unavailable or incompatible with this NumPy build",
+    )
     def test_robot(self):
         r = rtb.models.UR5()
         b = gm.Cuboid([1, 1, 1], base=SE3(1.0, 0, 0))
         r.links[1].collision[0].closest_point(b)
 
+    @unittest.skipUnless(
+        rtb is not None,
+        "roboticstoolbox is unavailable or incompatible with this NumPy build",
+    )
     def test_robot2(self):
         r = rtb.models.Panda()
         b = gm.Cuboid([1, 1, 1], base=SE3(1.0, 0, 0))

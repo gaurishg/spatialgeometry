@@ -1,5 +1,4 @@
-from setuptools import setup, find_packages, Extension
-from os import path
+from setuptools import setup, Extension
 import os
 import numpy
 
@@ -27,6 +26,6 @@ scene = Extension(
 
 
 setup(
-    package_data={"spatialgeometry": extra_files},
+    package_data={"spatialgeometry": extra_files + ["py.typed", "scene.pyi"]},
     ext_modules=[scene],
 )

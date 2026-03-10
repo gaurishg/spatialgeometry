@@ -3,24 +3,30 @@
 @author: Jesse Haviland
 """
 
-import numpy as np
-from io import StringIO
-from spatialmath.base import r2q
-from spatialmath.base.argcheck import getvector
-from spatialmath import SE3
-from spatialgeometry.geom import Shape
-from spatialgeometry.geom.Shape import update
 import os
-import copy
+from collections.abc import Iterator
+from io import StringIO
+from typing import Any, TypeAlias
 from warnings import warn
 
-from typing import Tuple, Union
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
+from spatialmath.base.argcheck import getvector
 
-p = None
-_pyb = None
+from spatialgeometry.geom.Shape import Shape, update
+
+FloatArray: TypeAlias = NDArray[np.float64]
+ClosestPointResult: TypeAlias = tuple[
+    float | None,
+    FloatArray | None,
+    FloatArray | None,
+]
+
+p: Any = None
+_pyb: bool | None = None
 
 
-def _import_pyb():
+def _import_pyb() -> None:
     import importlib
 
     global _pyb
@@ -31,9 +37,13 @@ def _import_pyb():
     except Exception:  # pragma nocover
         from contextlib import contextmanager
 
-        @contextmanager  # type: ignore
-        def pipes(stdout=None, stderr=None):
-            pass
+        @contextmanager
+        def pipes(
+            stdout: Any = None,
+            stderr: Any = None,
+            encoding: Any = None,
+        ) -> Iterator[tuple[None, None]]:
+            yield (None, None)
 
     try:
         out = StringIO()
@@ -52,9 +62,9 @@ def _import_pyb():
 
 
 class CollisionShape(Shape):
-    def __init__(self, collision=True, **kwargs):
-        self.co = None
-        self.pinit = False
+    def __init__(self, collision: bool = True, **kwargs: Any) -> None:
+        self.co: int | None = None
+        self.pinit: bool = False
         super().__init__(**kwargs)
         self._collision = collision
 
@@ -71,26 +81,26 @@ class CollisionShape(Shape):
     #     #     if k.startswith("_") and isinstance(v, np.ndarray):
     #     #         setattr(new, k, np.copy(v))
 
-    def _update_pyb(self):
+    def _update_pyb(self) -> None:
         if _pyb and self.co is not None:
-            p.resetBasePositionAndOrientation(self.co, self._wT[:3, 3], self._wq)  # type: ignore
+            p.resetBasePositionAndOrientation(self.co, self._wT[:3, 3], self._wq)
 
-    def _s_init_pob(self, col):
-        self.co = p.createMultiBody(  # type: ignore
+    def _s_init_pob(self, col: int) -> None:
+        self.co = p.createMultiBody(
             baseMass=1, baseInertialFramePosition=[0, 0, 0], baseCollisionShapeIndex=col
         )
         self.pinit = True
 
-    def _init_pob(self):  # pragma nocover
+    def _init_pob(self) -> None:  # pragma nocover
         pass
 
-    def _check_pyb(self):
+    def _check_pyb(self) -> None:
         if _pyb is None:
             _import_pyb()
 
     def closest_point(
         self, shape: "CollisionShape", inf_dist: float = 1.0
-    ) -> Tuple[Union[float, None], Union[np.ndarray, None], Union[np.ndarray, None]]:
+    ) -> ClosestPointResult:
         """
         closest_point(shape, inf_dist) returns the minimum euclidean
         distance between self and shape, provided it is less than inf_dist.
@@ -129,7 +139,7 @@ class CollisionShape(Shape):
 
         shape._update_pyb()
 
-        ret = p.getClosestPoints(self.co, shape.co, inf_dist)  # type: ignore
+        ret = p.getClosestPoints(self.co, shape.co, inf_dist)
 
         try:
             return ret[0][8], np.array(ret[0][5]), np.array(ret[0][6])
@@ -139,7 +149,7 @@ class CollisionShape(Shape):
             # Obstacle is further away than inf_dist
             return None, None, None
 
-    def iscollided(self, shape) -> bool:
+    def iscollided(self, shape: "CollisionShape") -> bool:
         """
         iscollided(shape) checks if self and shape have collided
 
@@ -156,7 +166,7 @@ class CollisionShape(Shape):
         else:
             return False
 
-    def collided(self, shape):
+    def collided(self, shape: "CollisionShape") -> bool:
         """
         collided(shape) checks if self and shape have collided
 
@@ -186,18 +196,26 @@ class Mesh(CollisionShape):
 
     """
 
-    def __init__(self, filename=None, scale=[1, 1, 1], **kwargs):
-        super(Mesh, self).__init__(stype="mesh", **kwargs)
+    def __init__(
+        self,
+        filename: str | None = None,
+        scale: ArrayLike | None = (1, 1, 1),
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(stype="mesh", **kwargs)
 
         self.filename = filename
         self.scale = scale
 
-    def _init_pob(self):
-        name, file_extension = os.path.splitext(self.filename)
+    def _init_pob(self) -> None:
+        if self.filename is None:
+            raise ValueError("A mesh filename must be supplied")
+
+        _, file_extension = os.path.splitext(self.filename)
         if (file_extension == ".stl" or file_extension == ".STL") and self.collision:
 
-            col = p.createCollisionShape(  # type: ignore
-                shapeType=p.GEOM_MESH, fileName=self.filename, meshScale=self.scale  # type: ignore
+            col = p.createCollisionShape(
+                shapeType=p.GEOM_MESH, fileName=self.filename, meshScale=self.scale
             )
 
             super()._s_init_pob(col)
@@ -208,12 +226,12 @@ class Mesh(CollisionShape):
             )
 
     @property
-    def scale(self) -> np.ndarray:
+    def scale(self) -> FloatArray:
         return self._scale
 
     @scale.setter
     @update
-    def scale(self, value):
+    def scale(self, value: ArrayLike | None) -> None:
         if value is not None:
             value = getvector(value, 3)
         else:
@@ -221,15 +239,15 @@ class Mesh(CollisionShape):
         self._scale = np.array(value)
 
     @property
-    def filename(self):
+    def filename(self) -> str | None:
         return self._filename
 
     @filename.setter
     @update
-    def filename(self, value):
+    def filename(self, value: str | None) -> None:
         self._filename = value
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """
         to_dict() returns the shapes information in dictionary form
 
@@ -258,15 +276,15 @@ class Cylinder(CollisionShape):
 
     """
 
-    def __init__(self, radius, length, **kwargs):
-        super(Cylinder, self).__init__(stype="cylinder", **kwargs)
+    def __init__(self, radius: float, length: float, **kwargs: Any) -> None:
+        super().__init__(stype="cylinder", **kwargs)
         self.radius = radius
         self.length = length
 
-    def _init_pob(self):
+    def _init_pob(self) -> None:
         if self.collision:
-            col = p.createCollisionShape(  # type: ignore
-                shapeType=p.GEOM_CYLINDER, radius=self.radius, height=self.length  # type: ignore
+            col = p.createCollisionShape(
+                shapeType=p.GEOM_CYLINDER, radius=self.radius, height=self.length
             )
 
             super()._s_init_pob(col)
@@ -277,24 +295,24 @@ class Cylinder(CollisionShape):
             )
 
     @property
-    def radius(self):
+    def radius(self) -> float:
         return self._radius
 
     @radius.setter
     @update
-    def radius(self, value):
+    def radius(self, value: float) -> None:
         self._radius = float(value)
 
     @property
-    def length(self):
+    def length(self) -> float:
         return self._length
 
     @length.setter
     @update
-    def length(self, value):
+    def length(self, value: float) -> None:
         self._length = float(value)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """
         to_dict() returns the shapes information in dictionary form
 
@@ -321,13 +339,13 @@ class Sphere(CollisionShape):
 
     """
 
-    def __init__(self, radius, **kwargs):
-        super(Sphere, self).__init__(stype="sphere", **kwargs)
+    def __init__(self, radius: float, **kwargs: Any) -> None:
+        super().__init__(stype="sphere", **kwargs)
         self.radius = radius
 
-    def _init_pob(self):
+    def _init_pob(self) -> None:
         if self.collision:
-            col = p.createCollisionShape(shapeType=p.GEOM_SPHERE, radius=self.radius)  # type: ignore
+            col = p.createCollisionShape(shapeType=p.GEOM_SPHERE, radius=self.radius)
 
             super()._s_init_pob(col)
         else:
@@ -337,15 +355,15 @@ class Sphere(CollisionShape):
             )
 
     @property
-    def radius(self):
+    def radius(self) -> float:
         return self._radius
 
     @radius.setter
     @update
-    def radius(self, value):
+    def radius(self, value: float) -> None:
         self._radius = float(value)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """
         to_dict() returns the shapes information in dictionary form
 
@@ -371,15 +389,16 @@ class Cuboid(CollisionShape):
 
     """
 
-    def __init__(self, scale, **kwargs):
-        super(Cuboid, self).__init__(stype="cuboid", **kwargs)
+    def __init__(self, scale: ArrayLike | None, **kwargs: Any) -> None:
+        super().__init__(stype="cuboid", **kwargs)
         self.scale = scale
 
-    def _init_pob(self):
+    def _init_pob(self) -> None:
 
         if self.collision:
-            col = p.createCollisionShape(  # type: ignore
-                shapeType=p.GEOM_BOX, halfExtents=np.array(self.scale) / 2  # type: ignore
+            col = p.createCollisionShape(
+                shapeType=p.GEOM_BOX,
+                halfExtents=self.scale / 2,
             )
 
             super()._s_init_pob(col)
@@ -390,19 +409,19 @@ class Cuboid(CollisionShape):
             )
 
     @property
-    def scale(self) -> np.ndarray:
+    def scale(self) -> FloatArray:
         return self._scale
 
     @scale.setter
     @update
-    def scale(self, value):
+    def scale(self, value: ArrayLike | None) -> None:
         if value is not None:
             value = getvector(value, 3)
         else:
             value = getvector([1, 1, 1], 3)
         self._scale = np.array(value)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """
         to_dict() returns the shapes information in dictionary form
 
@@ -416,6 +435,6 @@ class Cuboid(CollisionShape):
 
 
 class Box(Cuboid):
-    def __init__(self, scale, **kwargs):
+    def __init__(self, scale: ArrayLike | None, **kwargs: Any) -> None:
         warn("Box is deprecated, use Cuboid instead", FutureWarning)
         super().__init__(scale, **kwargs)

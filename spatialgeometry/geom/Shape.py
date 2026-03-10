@@ -3,38 +3,33 @@
 @author: Jesse Haviland
 """
 
+from collections.abc import Callable
+from copy import copy as ccopy
+from copy import deepcopy
 from functools import wraps
-from multiprocessing.sharedctypes import Value
-from spatialgeometry.geom.SceneNode import SceneNode
-from spatialmath import SE3
-from spatialmath.base.argcheck import getvector
-from spatialmath.base import r2q
-from copy import copy as ccopy, deepcopy
-from numpy import (
-    ndarray,
-    copy as npcopy,
-    pi,
-    zeros,
-    array,
-    any,
-    concatenate,
-    eye,
-    array_equal,
-)
-from typing import Union, Tuple, Dict, Any
+from typing import Any, TypeAlias, TypeVar, cast
 from warnings import warn
 
-import spatialmath.base as smb
 import numpy as np
+from numpy import array, array_equal, concatenate, eye, pi, zeros
+from numpy import copy as npcopy
+from numpy.typing import ArrayLike, NDArray
+from spatialmath import SE3
+from spatialmath.base.argcheck import getvector
 
-ArrayLike = Union[list, ndarray, tuple, set]
+from spatialgeometry.geom.SceneNode import SceneNode
+
+FloatArray: TypeAlias = NDArray[np.float64]
+ColorTuple: TypeAlias = tuple[float, float, float, float]
+SerializedShape: TypeAlias = dict[str, Any]
+T = TypeVar("T")
 _mpl = False
 # _rtb = False
 
 
-def update(func):  # pragma nocover
+def update(func: Callable[..., T]) -> Callable[..., T]:  # pragma nocover
     @wraps(func)
-    def wrapper_update(*args, **kwargs):
+    def wrapper_update(*args: Any, **kwargs: Any) -> T:
 
         if args[0]._added_to_swift:
             args[0]._changed = True
@@ -66,16 +61,16 @@ CONST_RX = SE3.Rx(pi / 2).A
 class Shape(SceneNode):
     def __init__(
         self,
-        pose: Union[ndarray, SE3] = eye(4),
-        color: ArrayLike = None,
-        stype: str = None,
-        base: Union[ndarray, SE3, None] = None,
-        **kwargs,
-    ):
+        pose: FloatArray | SE3 = eye(4),
+        color: str | ArrayLike | None = None,
+        stype: str | None = None,
+        base: FloatArray | SE3 | None = None,
+        **kwargs: Any,
+    ) -> None:
 
         # Swift related attributes
-        self._added_to_swift = False
-        self._changed = False
+        self._added_to_swift: bool = False
+        self._changed: bool = False
 
         if base is not None:
             warn("base kwarg is deprecated, use pose instead", FutureWarning)
@@ -87,7 +82,8 @@ class Shape(SceneNode):
 
             if T is not None and not array_equal(pose, eye(4)):
                 raise ValueError(
-                    "You cannot use both base and pose kwargs as they offer identical functionality. Use only pose."
+                    "You cannot use both base and pose kwargs as they offer "
+                    "identical functionality. Use only pose."
                 )
 
         else:
@@ -98,18 +94,18 @@ class Shape(SceneNode):
                 T = pose
 
         if color is None:
-            self._color = (0.3, 0.3, 0.3, 1.0)
+            self._color: ColorTuple = (0.3, 0.3, 0.3, 1.0)
         else:
             self.color = color
 
         # Initialise the scene node
         super().__init__(T=T, **kwargs)
 
-        self.stype = stype
+        self.stype: str | None = stype
         self.v = zeros(6)
-        self.attached = True
+        self.attached: bool = True
 
-        self._collision = False
+        self._collision: bool = False
 
     # --------------------------------------------------------------------- #
 
@@ -124,15 +120,15 @@ class Shape(SceneNode):
         new = ccopy(self)
 
         for k, v in self.__dict__.items():
-            if k.startswith("_") and isinstance(v, ndarray):
+            if k.startswith("_") and isinstance(v, np.ndarray):
                 setattr(new, k, npcopy(v))
 
         return new
 
-    def __copy__(self):
+    def __copy__(self) -> "Shape":
         return deepcopy(self)
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, Any]) -> "Shape":
         cls = self.__class__
         result = cls.__new__(cls)
 
@@ -151,11 +147,12 @@ class Shape(SceneNode):
 
     # --------------------------------------------------------------------- #
 
-    def _to_hex(self, rgb) -> int:
-        rgb = (array(rgb) * 255).astype(int)
-        return int("0x%02x%02x%02x" % (rgb[0], rgb[1], rgb[2]), 16)
+    def _to_hex(self, rgb: ArrayLike) -> int:
+        rgb = np.asarray(rgb, dtype=np.float64)
+        rgb = (rgb * 255).astype(int)
+        return int(f"0x{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}", 16)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> SerializedShape:
         """
         to_dict() returns the shapes information in dictionary form
 
@@ -175,7 +172,7 @@ class Shape(SceneNode):
 
         return shape
 
-    def fk_dict(self) -> Dict[str, Any]:
+    def fk_dict(self) -> SerializedShape:
         """
         fk_dict() outputs shapes pose in dictionary form
 
@@ -200,15 +197,15 @@ class Shape(SceneNode):
         return self._collision
 
     @property
-    def v(self) -> ndarray:
+    def v(self) -> FloatArray:
         return self._v
 
     @v.setter
-    def v(self, value: ArrayLike):
+    def v(self, value: ArrayLike) -> None:
         self._v = array(getvector(value, 6))
 
     @property
-    def color(self) -> Tuple[float, float, float, float]:
+    def color(self) -> ColorTuple:
         """
         shape.color returns a four length tuple representing (red, green, blue, alpha)
         where alpha represents transparency. Values returned are in the range [0-1].
@@ -217,7 +214,7 @@ class Shape(SceneNode):
 
     @color.setter
     @update
-    def color(self, value: ArrayLike):
+    def color(self, value: str | ArrayLike | None) -> None:
         """
         shape.color(new_color) sets the color of a shape.
 
@@ -252,19 +249,19 @@ class Shape(SceneNode):
         elif value is None:
             value = default_color
         else:
-            value = array(value)
+            value = np.asarray(value, dtype=np.float64)
 
-            if any(value > 1.0):
+            if np.any(value > 1.0):
                 value = value / 255.0
 
-            if value.shape[0] == 3:  # type: ignore
+            if value.shape[0] == 3:
                 value = concatenate([value, [1.0]])
 
-            value = tuple(value)
+            value = tuple(float(component) for component in value)
 
-        self._color = value
+        self._color = cast(ColorTuple, value)
 
-    def set_alpha(self, alpha: Union[float, int]):
+    def set_alpha(self, alpha: float | int) -> None:
         """
         Convenience method to set the opacity/alpha value of the robots color.
         """
@@ -273,18 +270,18 @@ class Shape(SceneNode):
             alpha /= 255
 
         new_color = concatenate([self._color[:3], [alpha]])
-        self._color = tuple(new_color)
+        self._color = cast(ColorTuple, tuple(new_color))
 
     # --------------------------------------------------------------------- #
     # SceneNode properties
     # These relate to how scene node operates
 
     @property
-    def T(self) -> ndarray:
+    def T(self) -> FloatArray:
         return self._T
 
     @T.setter
-    def T(self, T_new: Union[ndarray, SE3]):
+    def T(self, T_new: FloatArray | SE3) -> None:
         if isinstance(T_new, SE3):
             T_new = T_new.A
         self._T = T_new
@@ -303,20 +300,20 @@ class Axes(Shape):
 
     """
 
-    def __init__(self, length, **kwargs):
-        super(Axes, self).__init__(stype="axes", **kwargs)
+    def __init__(self, length: float, **kwargs: Any) -> None:
+        super().__init__(stype="axes", **kwargs)
         self.length = length
 
     @property
-    def length(self):
+    def length(self) -> float:
         return self._length
 
     @length.setter
     @update
-    def length(self, value):
+    def length(self, value: float) -> None:
         self._length = float(value)
 
-    def to_dict(self):
+    def to_dict(self) -> SerializedShape:
         """
         to_dict() returns the shapes information in dictionary form
 
@@ -357,54 +354,54 @@ class Arrow(Shape):
         radius: float = 0.0,
         head_length: float = 0.2,
         head_radius: float = 0.2,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         if head_length > 1.0 or head_length < 0.0:
             raise ValueError("Head length must be a value between 0 and 1")
 
-        super(Arrow, self).__init__(stype="arrow", **kwargs)
+        super().__init__(stype="arrow", **kwargs)
         self.length = length
         self.radius = radius
         self.head_length = head_length
         self.head_radius = head_radius
 
     @property
-    def length(self):
+    def length(self) -> float:
         return self._length
 
     @length.setter
     @update
-    def length(self, value):
+    def length(self, value: float) -> None:
         self._length = float(value)
 
     @property
-    def radius(self):
+    def radius(self) -> float:
         return self._radius
 
     @radius.setter
     @update
-    def radius(self, value):
+    def radius(self, value: float) -> None:
         self._radius = float(value)
 
     @property
-    def head_length(self):
+    def head_length(self) -> float:
         return self._head_length
 
     @head_length.setter
     @update
-    def head_length(self, value):
+    def head_length(self, value: float) -> None:
         self._head_length = float(value)
 
     @property
-    def head_radius(self):
+    def head_radius(self) -> float:
         return self._head_radius
 
     @head_radius.setter
     @update
-    def head_radius(self, value):
+    def head_radius(self, value: float) -> None:
         self._head_radius = float(value)
 
-    def to_dict(self):
+    def to_dict(self) -> SerializedShape:
         """
         to_dict() returns the shapes information in dictionary form
 
