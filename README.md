@@ -24,3 +24,15 @@ A Python Shape and Geometry Package
 </td>
 </tr>
 </table>
+
+## Changes in this repository
+
+Compared with the base `jhavl/spatialgeometry` repository, this repository now:
+
+- targets Python 3.10 and newer
+- builds and runs against NumPy 2
+- includes stricter type hints across the core geometry modules
+- ships typing metadata for the compiled `spatialgeometry.scene` extension
+- adds `ruff` and `mypy` configuration for static checking
+- updates CI to run the new static checks alongside the test suite
+- skips optional `roboticstoolbox` integration tests when that upstream dependency is unavailable or incompatible with the active NumPy build
